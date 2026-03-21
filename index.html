@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Niko — AI Watch Face Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Space+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000;--s1:#0d0d0f;--s2:#18181b;--s3:#222226;
+  --b:rgba(255,255,255,.08);--t:#f0f0f5;--m:#6b6b7a;
+  --a:#0a84ff;--ag:rgba(10,132,255,.32);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:36px 16px 90px;position:relative;overflow-x:hidden}
+body::before{content:'';position:fixed;top:-20%;left:50%;transform:translateX(-50%);
+  width:700px;height:700px;
+  background:radial-gradient(circle,rgba(10,132,255,.05)0%,transparent 65%);
+  pointer-events:none;z-index:0}
+
+/* HEADER */
+header{text-align:center;margin-bottom:36px;z-index:1;position:relative}
+.brand{font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:.22em;
+  color:var(--m);text-transform:uppercase;display:block;margin-bottom:8px}
+h1{font-size:1.6rem;font-weight:600;letter-spacing:-.03em;
+  background:linear-gradient(150deg,#fff 40%,rgba(255,255,255,.4));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{font-size:.78rem;color:var(--m);margin-top:5px}
+.app{display:flex;flex-direction:column;align-items:center;gap:26px;
+  width:100%;max-width:400px;z-index:1;position:relative}
+
+/* WATCH FRAME */
+.watch-wrap{display:flex;flex-direction:column;align-items:center;
+  filter:drop-shadow(0 28px 60px rgba(0,0,0,.95))}
+.band{width:92px;height:52px;background:linear-gradient(180deg,#1e1e22,#2a2a2f 50%,#1e1e22);position:relative}
+.band-top{border-radius:8px 8px 2px 2px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.band-bot{border-radius:2px 2px 8px 8px}
+.band::after{content:'';position:absolute;left:50%;transform:translateX(-50%);
+  width:2px;height:70%;top:15%;background:rgba(255,255,255,.04);border-radius:2px}
+.case-outer{position:relative;width:198px;height:240px}
+.crown{position:absolute;right:-10px;top:52px;width:11px;height:42px;
+  background:linear-gradient(90deg,#252529,#3c3c42 40%,#2d2d31);border-radius:5px;z-index:20;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.crown::before{content:'';position:absolute;inset:4px 2px;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.06) 2px,rgba(255,255,255,.06) 3px);
+  border-radius:3px}
+.side-btn{position:absolute;right:-10px;top:106px;width:11px;height:26px;
+  background:linear-gradient(90deg,#1e1e22,#2e2e34 40%,#252528);border-radius:3px;z-index:20}
+.bezel{width:100%;height:100%;
+  background:linear-gradient(148deg,#3e3e44 0%,#1e1e22 45%,#2c2c32 100%);
+  border-radius:56px;padding:11px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04)}
+#watchScreen{width:100%;height:100%;background:#000;border-radius:46px;
+  overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+#watchScreen::after{content:'';position:absolute;top:0;left:10%;width:38%;height:52%;
+  background:linear-gradient(160deg,rgba(255,255,255,.05)0%,transparent 80%);
+  border-radius:0 0 80% 0;z-index:30;pointer-events:none}
+
+/* SCREEN LAYERS */
+#dialLayer{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+#dialLayer svg{width:100%;height:100%;display:block}
+#handsLayer{position:absolute;inset:0;width:100%;height:100%;z-index:10;pointer-events:none}
+#handsSVG{width:100%;height:100%;display:block}
+#compLayer{position:absolute;inset:0;z-index:11;pointer-events:none}
+
+/* Placeholder */
+.placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;z-index:2;background:#000}
+.ph-icon{width:30px;height:30px;opacity:.15}
+.ph-txt{font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.12em;
+  color:rgba(255,255,255,.18);text-transform:uppercase}
+
+/* Loader */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.1}50%{opacity:.4}}
+#loadOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:20;background:rgba(0,0,0,.7)}
+#loadOverlay.on{display:flex}
+#loadOverlay::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(circle,rgba(10,132,255,.12)0%,transparent 60%);
+  animation:pulse 1.4s ease-in-out infinite}
+.spinner{width:38px;height:38px;animation:spin 1.3s linear infinite;position:relative;z-index:1}
+@keyframes dial-in{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.dial-reveal{animation:dial-in .5s cubic-bezier(.34,1.4,.64,1) forwards}
+
+/* CONTROLS */
+.controls{width:100%;display:flex;flex-direction:column;gap:16px}
+.slabel{font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--m);margin-bottom:7px}
+
+/* Section card */
+.sec{background:var(--s1);border:1px solid var(--b);border-radius:16px;padding:16px}
+
+/* Preset row */
+.preset-row{display:flex;gap:6px;flex-wrap:wrap}
+.pchip{padding:6px 12px;border-radius:18px;border:1px solid var(--b);background:var(--s2);
+  color:var(--m);font-family:'DM Sans',sans-serif;font-size:.77rem;font-weight:500;
+  cursor:pointer;transition:all .14s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.pchip:hover{border-color:rgba(255,255,255,.15);color:var(--t)}
+.pchip.on{color:#fff;background:rgba(var(--pr),0.14);border-color:var(--pc);box-shadow:0 0 10px rgba(var(--pr),.15)}
+
+/* Mode toggle */
+.mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mode-btn{padding:10px 4px 8px;border-radius:11px;border:1px solid var(--b);background:var(--s2);
+  color:var(--m);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;
+  cursor:pointer;transition:all .14s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.mode-btn .mi{font-size:1.15rem}
+.mode-btn:hover{border-color:rgba(255,255,255,.14);color:var(--t)}
+.mode-btn.on{border-color:var(--a);background:rgba(10,132,255,.12);color:var(--t)}
+
+/* Hand styles */
+.hand-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.hcard{border:1px solid var(--b);border-radius:10px;background:var(--s2);
+  cursor:pointer;transition:all .14s;padding:8px 4px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+.hcard:hover{border-color:rgba(255,255,255,.14)}
+.hcard.on{border-color:var(--a);background:rgba(10,132,255,.1)}
+.hcard svg{width:32px;height:32px}
+.hcard-lbl{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--m);text-align:center}
+.hcard.on .hcard-lbl{color:rgba(255,255,255,.6)}
+
+/* Digital styles */
+.dstyle-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.dcard{border:1px solid var(--b);border-radius:10px;background:var(--s2);
+  cursor:pointer;transition:all .14s;padding:8px 4px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;min-height:52px;justify-content:center}
+.dcard:hover{border-color:rgba(255,255,255,.14)}
+.dcard.on{border-color:var(--a);background:rgba(10,132,255,.1)}
+.dcard-preview{font-size:.7rem;font-weight:700;white-space:nowrap;color:var(--t)}
+.dcard-lbl{font-family:'Space Mono',monospace;font-size:.5rem;color:var(--m);text-align:center}
+.dcard.on .dcard-lbl{color:rgba(255,255,255,.6)}
+
+/* Hand color swatches */
+.color-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.cswatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  transition:all .14s;flex-shrink:0}
+.cswatch.on{border-color:rgba(255,255,255,.75);transform:scale(1.18);
+  box-shadow:0 0 8px rgba(255,255,255,.2)}
+
+/* Complications */
+.comp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.comp-card{border:1px solid var(--b);border-radius:11px;background:var(--s2);
+  cursor:pointer;transition:all .14s;padding:11px 13px;
+  display:flex;align-items:center;gap:10px}
+.comp-card:hover{border-color:rgba(255,255,255,.14)}
+.comp-card.on{border-color:rgba(48,209,88,.45);background:rgba(48,209,88,.08)}
+.comp-icon{font-size:1.2rem;width:28px;text-align:center;flex-shrink:0}
+.comp-info{flex:1;min-width:0}
+.comp-name{font-size:.82rem;font-weight:500;color:var(--t)}
+.comp-val{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--m);margin-top:1px}
+.comp-card.on .comp-val{color:#30d158}
+.comp-toggle-dot{width:10px;height:10px;border-radius:50%;
+  background:var(--b);border:1px solid rgba(255,255,255,.12);flex-shrink:0;transition:all .14s}
+.comp-card.on .comp-toggle-dot{background:#30d158;border-color:#30d158;
+  box-shadow:0 0 6px rgba(48,209,88,.5)}
+
+/* Position picker */
+.pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.poscard{border:1px solid var(--b);border-radius:9px;background:var(--s2);
+  cursor:pointer;transition:all .14s;padding:6px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  font-family:'Space Mono',monospace;font-size:.58rem;color:var(--m)}
+.poscard:hover{border-color:rgba(255,255,255,.14);color:var(--t)}
+.poscard.on{border-color:var(--a);background:rgba(10,132,255,.1);color:rgba(255,255,255,.7)}
+
+/* Prompt + button */
+textarea{width:100%;padding:13px;border-radius:12px;border:1px solid var(--b);
+  background:var(--s2);color:var(--t);font-family:'DM Sans',sans-serif;font-size:.9rem;
+  line-height:1.55;resize:none;height:76px;outline:none;transition:border-color .18s}
+textarea:focus{border-color:rgba(255,255,255,.16)}
+textarea::placeholder{color:var(--m)}
+.gen-btn{width:100%;padding:16px;border-radius:13px;border:none;background:var(--a);
+  color:#fff;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;
+  cursor:pointer;position:relative;overflow:hidden;transition:transform .14s,box-shadow .14s}
+.gen-btn::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.11)0%,transparent 55%);pointer-events:none}
+.gen-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 24px var(--ag)}
+.gen-btn:disabled{background:var(--s2);color:var(--m);cursor:not-allowed;transform:none;box-shadow:none}
+.err{background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.28);border-radius:10px;
+  padding:9px 13px;font-size:.79rem;color:#ff6b63;display:none;text-align:center}
+.err.on{display:block}
+
+/* Export */
+.exp-sec{display:none;width:100%}
+.exp-sec.on{display:block}
+.model-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}
+.mchip{flex:1;min-width:65px;padding:7px 4px;border-radius:9px;border:1px solid var(--b);
+  background:var(--s2);color:var(--m);font-family:'Space Mono',monospace;font-size:.57rem;
+  cursor:pointer;text-align:center;transition:all .13s;line-height:1.35}
+.mchip strong{display:block;color:var(--t);font-family:'DM Sans',sans-serif;
+  font-size:.65rem;font-weight:600;margin-bottom:1px}
+.mchip:hover{border-color:rgba(255,255,255,.14)}
+.mchip.on{border-color:var(--a);background:rgba(10,132,255,.1);color:rgba(255,255,255,.6)}
+.exp-row{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.ebtn{border-radius:11px;border:1px solid var(--b);background:var(--s2);color:var(--t);
+  font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;cursor:pointer;
+  padding:12px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:all .14s;line-height:1.2}
+.ebtn .el{font-size:.76rem}
+.ebtn .es{font-size:.58rem;color:var(--m);font-family:'Space Mono',monospace}
+.ebtn:hover{border-color:rgba(255,255,255,.18);background:var(--s3)}
+.ebtn:active{transform:scale(.97)}
+.ebtn.prime{background:rgba(10,132,255,.12);border-color:rgba(10,132,255,.4)}
+.ebtn.prime:hover{background:rgba(10,132,255,.2);border-color:var(--a)}
+
+/* API key */
+.keyrow{position:relative}
+.keyrow input{width:100%;padding:12px 40px 12px 13px;border-radius:11px;border:1px solid var(--b);
+  background:var(--s1);color:var(--t);font-family:'Space Mono',monospace;font-size:.74rem;
+  outline:none;transition:border-color .18s}
+.keyrow input:focus{border-color:rgba(255,255,255,.12)}
+.keyrow input::placeholder{font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--m)}
+.eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--m);cursor:pointer;padding:4px;transition:color .13s}
+.eye:hover{color:var(--t)}
+
+/* Collapsible sections */
+.sec-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  user-select:none;padding:0}
+.sec-header .slabel{margin-bottom:0}
+.chevron{color:var(--m);font-size:.9rem;transition:transform .2s}
+.collapsed .chevron{transform:rotate(-90deg)}
+.sec-body{overflow:hidden;transition:max-height .2s ease,opacity .2s ease}
+.collapsed .sec-body{max-height:0!important;opacity:0}
+.sec-body-inner{padding-top:12px}
+
+/* MODAL */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);
+  z-index:100;display:none;align-items:flex-end;justify-content:center}
+.backdrop.on{display:flex}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet{background:#111114;border-radius:22px 22px 0 0;
+  border-top:1px solid rgba(255,255,255,.08);
+  width:100%;max-width:480px;padding:0 0 36px;
+  animation:up .36s cubic-bezier(.32,.72,0,1);max-height:90vh;overflow-y:auto}
+.handle{width:34px;height:4px;background:rgba(255,255,255,.14);border-radius:2px;margin:13px auto 16px}
+.min{padding:0 20px}
+.mt{font-size:1.08rem;font-weight:600;margin-bottom:5px}
+.ms{font-size:.82rem;color:var(--m);margin-bottom:20px;line-height:1.5}
+.mcard{background:var(--s2);border:1px solid var(--b);border-radius:13px;padding:14px 15px;margin-bottom:10px}
+.mhdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.mico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.mico.p{background:linear-gradient(135deg,#ff9500,#ff375f)}
+.mico.c{background:linear-gradient(135deg,#30d158,#007aff)}
+.mico.h{background:linear-gradient(135deg,#5e5ce6,#0a84ff)}
+.mtit{font-weight:600;font-size:.92rem;margin-bottom:3px}
+.mbadge{font-size:.62rem;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:16px}
+.be{background:rgba(48,209,88,.14);color:#30d158}
+.bf{background:rgba(10,132,255,.14);color:#0a84ff}
+.bh{background:rgba(94,92,230,.14);color:#9e9ef5}
+.msteps{list-style:none;display:flex;flex-direction:column;gap:8px}
+.msteps li{display:flex;align-items:flex-start;gap:9px;font-size:.83rem;
+  color:rgba(255,255,255,.7);line-height:1.44}
+.sn{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.08);
+  color:var(--m);font-family:'Space Mono',monospace;font-size:.62rem;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.note{background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.2);
+  border-radius:8px;padding:8px 11px;font-size:.76rem;color:rgba(255,159,10,.85);
+  margin-top:11px;line-height:1.44}
+.mclose{width:100%;margin-top:12px;padding:13px;border-radius:12px;
+  border:1px solid var(--b);background:transparent;color:var(--m);
+  font-family:'DM Sans',sans-serif;font-size:.9rem;cursor:pointer;transition:all .14s}
+.mclose:hover{color:var(--t);border-color:rgba(255,255,255,.14)}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">Studio Niko Design</span>
+  <h1>AI Watch Face Studio</h1>
+  <p>Fond IA · Aiguilles · Digital · Complications live</p>
+</header>
+
+<div class="app">
+
+<!-- WATCH PREVIEW -->
+<div class="watch-wrap">
+  <div class="band band-top"></div>
+  <div class="case-outer">
+    <div class="crown"></div>
+    <div class="side-btn"></div>
+    <div class="bezel">
+      <div id="watchScreen">
+        <div id="dialLayer"></div>
+        <div id="handsLayer">
+          <svg id="handsSVG" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div id="compLayer"></div>
+        <div class="placeholder" id="ph">
+          <svg class="ph-icon" viewBox="0 0 32 32" fill="none">
+            <rect x="3" y="2" width="26" height="28" rx="7" stroke="white" stroke-width="1.4"/>
+            <circle cx="16" cy="16" r="6" stroke="white" stroke-width="1.4"/>
+            <line x1="16" y1="16" x2="16" y2="11" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="16" y1="16" x2="20" y2="18" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <div class="ph-txt">Design IA</div>
+        </div>
+        <div id="loadOverlay">
+          <svg class="spinner" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="16" stroke="rgba(255,255,255,0.07)" stroke-width="2.5"/>
+            <path d="M20 4 A16 16 0 0 1 36 20" stroke="#0a84ff" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="band band-bot"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+
+  <!-- Presets -->
+  <div class="sec">
+    <div class="slabel">Style rapide</div>
+    <div class="preset-row" id="presetRow"></div>
+  </div>
+
+  <!-- Mode -->
+  <div class="sec">
+    <div class="slabel">Mode d'affichage</div>
+    <div class="mode-row">
+      <button class="mode-btn on" data-mode="analog" onclick="setMode('analog',this)">
+        <span class="mi">🕐</span>Aiguilles
+      </button>
+      <button class="mode-btn" data-mode="digital" onclick="setMode('digital',this)">
+        <span class="mi">🔢</span>Digital
+      </button>
+      <button class="mode-btn" data-mode="hybrid" onclick="setMode('hybrid',this)">
+        <span class="mi">⚡</span>Hybride
+      </button>
+    </div>
+  </div>
+
+  <!-- Analog options (visible in analog/hybrid) -->
+  <div class="sec" id="secHands">
+    <div class="sec-header" onclick="toggleSec(this)">
+      <div class="slabel">Style des aiguilles</div>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="sec-body" style="max-height:200px">
+      <div class="sec-body-inner">
+        <div class="hand-grid" id="handGrid"></div>
+        <div style="margin-top:12px">
+          <div class="slabel" style="margin-bottom:8px">Couleur</div>
+          <div class="color-row" id="handColorRow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Digital options (visible in digital/hybrid) -->
+  <div class="sec" id="secDigital" style="display:none">
+    <div class="sec-header" onclick="toggleSec(this)">
+      <div class="slabel">Style digital</div>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="sec-body" style="max-height:200px">
+      <div class="sec-body-inner">
+        <div class="dstyle-grid" id="dstyleGrid"></div>
+        <div style="margin-top:12px">
+          <div class="slabel" style="margin-bottom:8px">Couleur</div>
+          <div class="color-row" id="digitalColorRow"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complications -->
+  <div class="sec">
+    <div class="sec-header" onclick="toggleSec(this)">
+      <div class="slabel">Complications</div>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="sec-body" style="max-height:400px">
+      <div class="sec-body-inner">
+        <div class="comp-grid" id="compGrid"></div>
+        <div style="margin-top:14px">
+          <div class="slabel" style="margin-bottom:8px">Position des complications</div>
+          <div class="pos-grid" id="posGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="sec">
+    <div class="slabel">Description du fond de cadran</div>
+    <textarea id="promptInput" placeholder="Ex : Fond cyberpunk, grille néon cyan, textures holographiques, vibe Ghost in the Shell…"></textarea>
+  </div>
+
+  <div class="err" id="errBar"></div>
+  <button class="gen-btn" id="genBtn" onclick="generate()">✦ Générer le cadran</button>
+
+  <!-- Export -->
+  <div class="exp-sec" id="expSec">
+    <div class="sec">
+      <div class="slabel">Exporter</div>
+      <div class="model-row" id="modelRow"></div>
+      <div class="exp-row">
+        <button class="ebtn prime" onclick="exportWatch()">
+          <span style="font-size:1.1rem">📲</span>
+          <span class="el">Montre</span>
+          <span class="es" id="resLbl">396×484</span>
+        </button>
+        <button class="ebtn" onclick="exportHTML()">
+          <span style="font-size:1rem">🌐</span>
+          <span class="el">HTML</span>
+          <span class="es">Animé</span>
+        </button>
+        <button class="ebtn" onclick="exportSVG()">
+          <span style="font-size:1rem">⬇</span>
+          <span class="el">SVG</span>
+          <span class="es">Vecteur</span>
+        </button>
+        <button class="ebtn" onclick="showGuide()">
+          <span style="font-size:1rem">ℹ</span>
+          <span class="el">Guide</span>
+          <span class="es">Install</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key -->
+  <div class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="slabel" style="margin-bottom:0">Clé API Mistral</div>
+      <button id="testBtn" onclick="testKey()"
+        style="background:none;border:1px solid var(--b);border-radius:8px;color:var(--m);
+          font-family:'Space Mono',monospace;font-size:.58rem;padding:4px 10px;cursor:pointer;
+          transition:all .14s;white-space:nowrap">
+        ⚡ Tester
+      </button>
+    </div>
+    <div class="keyrow">
+      <!-- type=text + autocomplete off → évite les bugs iOS password manager qui corrompent la valeur -->
+      <input type="text"
+        id="apiKey"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="none"
+        spellcheck="false"
+        inputmode="text"
+        placeholder="Clé depuis console.mistral.ai"
+        style="-webkit-text-security:disc;font-family:'Space Mono',monospace;font-size:.72rem">
+      <button class="eye" id="eyeBtn" onclick="toggleKey()">👁</button>
+    </div>
+    <div id="keyStatus" style="margin-top:8px;font-family:'Space Mono',monospace;font-size:.6rem;display:none;padding:6px 10px;border-radius:8px"></div>
+    <div style="margin-top:9px;font-size:.73rem;color:var(--m);line-height:1.55">
+      ⚠ <strong style="color:rgba(255,255,255,.4)">iOS</strong> : si bloqué, ouvrez ce fichier via un serveur
+      (app <em>Servercat</em>, <em>localhost</em> ou hébergement en ligne) plutôt que depuis l'app Fichiers.
+    </div>
+  </div>
+
+</div><!-- /controls -->
+</div><!-- /app -->
+
+<!-- INSTALL GUIDE MODAL -->
+<div class="backdrop" id="modal" onclick="handleBg(event)">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="min">
+      <div class="mt">Installer sur Apple Watch</div>
+      <div class="ms">Apple ne permet pas les cadrans tiers natifs. Trois méthodes disponibles selon vos besoins.</div>
+
+      <div class="mcard">
+        <div class="mhdr">
+          <div class="mico p">📸</div>
+          <div>
+            <div class="mtit">Cadran Photos</div>
+            <span class="mbadge be">Rapide · Natif iOS</span>
+          </div>
+        </div>
+        <ul class="msteps">
+          <li><span class="sn">1</span>Sélectionnez votre modèle, tapez <strong>📲 Montre</strong> — PNG à résolution exacte téléchargé.</li>
+          <li><span class="sn">2</span>Envoyez via AirDrop sur iPhone → sauvegardez dans Photos.</li>
+          <li><span class="sn">3</span>App <strong>Montre</strong> → Cadrans → <strong>+</strong> → Cadran <strong>Photos</strong>.</li>
+          <li><span class="sn">4</span>Sélectionnez l'image → Ajoutez → synchro auto.</li>
+        </ul>
+        <div class="note">⚠ Affiche le fond avec les aiguilles natives Apple Watch par-dessus.</div>
+      </div>
+
+      <div class="mcard">
+        <div class="mhdr">
+          <div class="mico c">⌚</div>
+          <div>
+            <div class="mtit">Clockology</div>
+            <span class="mbadge bf">Cadran complet · App tierce</span>
+          </div>
+        </div>
+        <ul class="msteps">
+          <li><span class="sn">1</span>Installez <strong>Clockology</strong> (App Store) sur iPhone et montre.</li>
+          <li><span class="sn">2</span>Exportez le <strong>PNG</strong> et le <strong>SVG</strong> depuis les boutons d'export.</li>
+          <li><span class="sn">3</span>Créez un cadran → importez PNG comme fond.</li>
+          <li><span class="sn">4</span>Ajoutez les aiguilles depuis la bibliothèque ou importez le SVG (Pro).</li>
+          <li><span class="sn">5</span>Send to Watch pour synchroniser.</li>
+        </ul>
+        <div class="note">💡 Clockology Pro : import SVG des aiguilles pour un résultat pixel-perfect.</div>
+      </div>
+
+      <div class="mcard">
+        <div class="mhdr">
+          <div class="mico h">🌐</div>
+          <div>
+            <div class="mtit">Export HTML animé</div>
+            <span class="mbadge bh">Standalone · Partout</span>
+          </div>
+        </div>
+        <ul class="msteps">
+          <li><span class="sn">1</span>Tapez <strong>🌐 HTML</strong> — un fichier HTML autonome est généré avec l'horloge animée complète.</li>
+          <li><span class="sn">2</span>Ouvrez-le dans n'importe quel navigateur (local ou hébergé).</li>
+          <li><span class="sn">3</span>Intégrable dans une WebApp, un TWA Android ou Clockology via WebView.</li>
+        </ul>
+      </div>
+
+      <button class="mclose" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════
+const PRESETS=[
+  {label:'Cyberpunk',color:'#00f5ff',rgb:'0,245,255',
+   prompt:'Fond de cadran cyberpunk sombre, grille néon cyan, chiffres 7-segments fragmentés façon terminal rétro, ambient glow bleu-vert. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Luxe',color:'#c9a84c',rgb:'201,168,76',
+   prompt:'Fond de cadran montre de luxe haute horlogerie, fond noir profond, guilloché central en or, index fins dorés aux 12 positions, ring biseauté élégant. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Minimal',color:'#e2e2ea',rgb:'226,226,234',
+   prompt:'Fond de cadran ultra-minimaliste, fond noir pur, uniquement 4 index blancs très fins aux cardinaux, espace négatif total, style Bauhaus. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Nature',color:'#30d158',rgb:'48,209,88',
+   prompt:'Fond de cadran organique, fond vert forêt profond, anneaux de croissance d\'arbre en texture subtile, index en forme de feuilles, ambiance terrarium. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Space',color:'#bf5af2',rgb:'191,90,242',
+   prompt:'Fond de cadran spatial, fond nébuleuse violette avec étoiles brillantes via filtres SVG, anneau orbital lumineux, textures cosmiques. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Rétro',color:'#ff9f0a',rgb:'255,159,10',
+   prompt:'Fond de cadran rétro années 70, fond brun cuivré, guilloché rayonnant doré-orange, index arabes vintage, patine authentique et grain. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Neon',color:'#ff375f',rgb:'255,55,95',
+   prompt:'Fond de cadran néon sombre, fond noir, cercles concentriques en dégradé rose-rouge néon, texture scanlines, vibe synthwave 80s. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+  {label:'Glace',color:'#aef',rgb:'170,238,255',
+   prompt:'Fond de cadran glace cristalline, fond noir avec sphère translucide centrale, reflets de lumière, cristaux de glace géométriques, pureté absolue. Pas d\'aiguilles. viewBox 0 0 220 220.'},
+];
+
+const HAND_STYLES=[
+  {id:'dauphine',name:'Dauphine',
+   draw:(cx,cy,col)=>`
+    <g id="hourHand" style="transform-origin:${cx}px ${cy}px">
+      <path d="M${cx} ${cy-58} L${cx-4} ${cy-10} L${cx} ${cy+18} L${cx+4} ${cy-10} Z" fill="${col}" filter="url(#hglow)"/>
+      <path d="M${cx} ${cy-58} L${cx-1.5} ${cy-10} L${cx} ${cy+18} L${cx+1.5} ${cy-10} Z" fill="rgba(255,255,255,0.4)"/>
+    </g>
+    <g id="minHand" style="transform-origin:${cx}px ${cy}px">
+      <path d="M${cx} ${cy-78} L${cx-3} ${cy-12} L${cx} ${cy+22} L${cx+3} ${cy-12} Z" fill="${col}" filter="url(#hglow)"/>
+      <path d="M${cx} ${cy-78} L${cx-1} ${cy-12} L${cx} ${cy+22} L${cx+1} ${cy-12} Z" fill="rgba(255,255,255,0.4)"/>
+    </g>
+    <g id="secHand" style="transform-origin:${cx}px ${cy}px">
+      <line x1="${cx}" y1="${cy-88}" x2="${cx}" y2="${cy+28}" stroke="#ff453a" stroke-width="1.2" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="3.5" fill="#ff453a"/>
+    </g>
+   `},
+  {id:'baton',name:'Bâton',
+   draw:(cx,cy,col)=>`
+    <g id="hourHand" style="transform-origin:${cx}px ${cy}px">
+      <rect x="${cx-3.5}" y="${cy-62}" width="7" height="72" rx="3.5" fill="${col}" filter="url(#hglow)"/>
+    </g>
+    <g id="minHand" style="transform-origin:${cx}px ${cy}px">
+      <rect x="${cx-2.5}" y="${cy-82}" width="5" height="96" rx="2.5" fill="${col}" filter="url(#hglow)"/>
+    </g>
+    <g id="secHand" style="transform-origin:${cx}px ${cy}px">
+      <rect x="${cx-0.8}" y="${cy-88}" width="1.6" height="110" rx="0.8" fill="#ff453a"/>
+      <circle cx="${cx}" cy="${cy}" r="3" fill="#ff453a"/>
+    </g>
+   `},
+  {id:'skeleton',name:'Squelette',
+   draw:(cx,cy,col)=>`
+    <g id="hourHand" style="transform-origin:${cx}px ${cy}px">
+      <path d="M${cx} ${cy-62} L${cx-5} ${cy-20} L${cx-2} ${cy+16} L${cx+2} ${cy+16} L${cx+5} ${cy-20} Z" fill="none" stroke="${col}" stroke-width="1.8" filter="url(#hglow)"/>
+      <line x1="${cx}" y1="${cy-55}" x2="${cx}" y2="${cy+10}" stroke="${col}" stroke-width="0.7" opacity="0.5"/>
+    </g>
+    <g id="minHand" style="transform-origin:${cx}px ${cy}px">
+      <path d="M${cx} ${cy-82} L${cx-4} ${cy-22} L${cx-1.5} ${cy+20} L${cx+1.5} ${cy+20} L${cx+4} ${cy-22} Z" fill="none" stroke="${col}" stroke-width="1.5" filter="url(#hglow)"/>
+    </g>
+    <g id="secHand" style="transform-origin:${cx}px ${cy}px">
+      <line x1="${cx}" y1="${cy-88}" x2="${cx}" y2="${cy+30}" stroke="#ff453a" stroke-width="1" stroke-linecap="round" stroke-dasharray="3 2"/>
+      <circle cx="${cx}" cy="${cy}" r="2.5" fill="none" stroke="#ff453a" stroke-width="1.2"/>
+    </g>
+   `},
+  {id:'sword',name:'Épée',
+   draw:(cx,cy,col)=>`
+    <g id="hourHand" style="transform-origin:${cx}px ${cy}px">
+      <path d="M${cx} ${cy-65} L${cx-1.5} ${cy-20} L${cx-5} ${cy+14} L${cx} ${cy+16} L${cx+5} ${cy+14} L${cx+1.5} ${cy-20} Z" fill="${col}" filter="url(#hglow)"/>
+      <line x1="${cx-6}" y1="${cy-10}" x2="${cx+6}" y2="${cy-10}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <g id="minHand" style="transform-origin:${cx}px ${cy}px">
+      <path d="M${cx} ${cy-85} L${cx-1} ${cy-22} L${cx-4} ${cy+18} L${cx} ${cy+20} L${cx+4} ${cy+18} L${cx+1} ${cy-22} Z" fill="${col}" filter="url(#hglow)"/>
+      <line x1="${cx-5}" y1="${cy-14}" x2="${cx+5}" y2="${cy-14}" stroke="${col}" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <g id="secHand" style="transform-origin:${cx}px ${cy}px">
+      <line x1="${cx}" y1="${cy-90}" x2="${cx}" y2="${cy+28}" stroke="#ff453a" stroke-width="1.2" stroke-linecap="round"/>
+      <rect x="${cx-3}" y="${cy-4}" width="6" height="8" rx="1" fill="#ff453a"/>
+    </g>
+   `},
+  {id:'minimal',name:'Minimal',
+   draw:(cx,cy,col)=>`
+    <g id="hourHand" style="transform-origin:${cx}px ${cy}px">
+      <line x1="${cx}" y1="${cy-58}" x2="${cx}" y2="${cy+16}" stroke="${col}" stroke-width="4" stroke-linecap="round" filter="url(#hglow)"/>
+    </g>
+    <g id="minHand" style="transform-origin:${cx}px ${cy}px">
+      <line x1="${cx}" y1="${cy-80}" x2="${cx}" y2="${cy+20}" stroke="${col}" stroke-width="2.5" stroke-linecap="round" filter="url(#hglow)"/>
+    </g>
+    <g id="secHand" style="transform-origin:${cx}px ${cy}px">
+      <line x1="${cx}" y1="${cy-88}" x2="${cx}" y2="${cy+26}" stroke="#ff453a" stroke-width="1" stroke-linecap="round"/>
+    </g>
+   `},
+];
+
+const DIGITAL_STYLES=[
+  {id:'lcd',name:'LCD',
+   render:(h,m,s,col)=>{
+     const pad=n=>String(n).padStart(2,'0');
+     return `<text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'Orbitron',monospace" font-size="36" font-weight="700" fill="${col}"
+       filter="url(#dglow)" letter-spacing="2">${pad(h)}:${pad(m)}</text>
+       <text x="50%" y="68%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'Orbitron',monospace" font-size="14" fill="${col}" opacity="0.6">${pad(s)}</text>`;
+   }},
+  {id:'elegant',name:'Élégant',
+   render:(h,m,s,col)=>{
+     const pad=n=>String(n).padStart(2,'0');
+     return `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'DM Sans',sans-serif" font-size="38" font-weight="300" fill="${col}"
+       filter="url(#dglow)" letter-spacing="4">${pad(h)}:${pad(m)}</text>
+       <text x="50%" y="68%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'Space Mono',monospace" font-size="12" fill="${col}" opacity="0.5" letter-spacing="3">${pad(s)}</text>`;
+   }},
+  {id:'neon',name:'Néon',
+   render:(h,m,s,col)=>{
+     const pad=n=>String(n).padStart(2,'0');
+     return `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'Orbitron',monospace" font-size="36" font-weight="900" fill="${col}"
+       style="text-shadow:none" filter="url(#neon-glow)" letter-spacing="3">${pad(h)}:${pad(m)}</text>
+       <text x="50%" y="68%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'Orbitron',monospace" font-size="13" fill="${col}" opacity="0.8" filter="url(#neon-glow)">${pad(s)}</text>`;
+   }},
+  {id:'bold',name:'Bold',
+   render:(h,m,s,col)=>{
+     const pad=n=>String(n).padStart(2,'0');
+     return `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+       font-family="'DM Sans',sans-serif" font-size="52" font-weight="600" fill="${col}"
+       filter="url(#dglow)">${pad(h)}:${pad(m)}</text>`;
+   }},
+  {id:'flip',name:'Flip',
+   render:(h,m,s,col)=>{
+     const pad=n=>String(n).padStart(2,'0');
+     const rx=12;
+     return `
+       <rect x="18" y="72" width="80" height="62" rx="${rx}" fill="rgba(0,0,0,0.6)" stroke="${col}" stroke-opacity="0.3" stroke-width="1"/>
+       <text x="58" y="107" dominant-baseline="middle" text-anchor="middle"
+         font-family="'Orbitron',monospace" font-size="34" font-weight="700" fill="${col}" filter="url(#dglow)">${pad(h)}</text>
+       <line x1="18" y1="103" x2="98" y2="103" stroke="${col}" stroke-opacity="0.2" stroke-width="1"/>
+       <rect x="106" y="72" width="80" height="62" rx="${rx}" fill="rgba(0,0,0,0.6)" stroke="${col}" stroke-opacity="0.3" stroke-width="1"/>
+       <text x="146" y="107" dominant-baseline="middle" text-anchor="middle"
+         font-family="'Orbitron',monospace" font-size="34" font-weight="700" fill="${col}" filter="url(#dglow)">${pad(m)}</text>
+       <line x1="106" y1="103" x2="186" y2="103" stroke="${col}" stroke-opacity="0.2" stroke-width="1"/>
+       <text x="110" y="67" dominant-baseline="middle" text-anchor="middle"
+         font-family="'Space Mono',monospace" font-size="11" fill="${col}" opacity="0.5">${pad(s)}</text>`;
+   }},
+];
+
+const HAND_COLORS=['#ffffff','#ffd60a','#ff453a','#30d158','#0a84ff','#bf5af2','#ff9f0a','#c9a84c'];
+const DIGITAL_COLORS=['#ffffff','#0a84ff','#30d158','#ff453a','#bf5af2','#ffd60a','#00f5ff','#ff9f0a'];
+
+const WATCH_MODELS=[
+  {label:'S9·S10',size:'45mm',w:396,h:484},
+  {label:'S9·S10',size:'41mm',w:352,h:430},
+  {label:'Ultra 2',size:'49mm',w:410,h:502},
+  {label:'S7·S8',size:'45mm',w:396,h:484},
+  {label:'S6·SE',size:'44mm',w:368,h:448},
+  {label:'S6·SE',size:'40mm',w:324,h:394},
+];
+
+const COMPLICATIONS=[
+  {id:'date',icon:'📅',name:'Date',unit:'',gen:()=>{const d=new Date();return d.getDate()+'/'+String(d.getMonth()+1).padStart(2,'0');}},
+  {id:'day',icon:'📆',name:'Jour',unit:'',gen:()=>['DIM','LUN','MAR','MER','JEU','VEN','SAM'][new Date().getDay()]},
+  {id:'bpm',icon:'❤️',name:'BPM',unit:'bpm',gen:()=>String(62+Math.floor(Math.sin(Date.now()/3000)*8+Math.random()*4))},
+  {id:'steps',icon:'👟',name:'Pas',unit:'pas',gen:()=>{const base=4200+Math.floor(Date.now()/60000)%3000;return base.toLocaleString('fr');}},
+  {id:'battery',icon:'🔋',name:'Batterie',unit:'%',gen:()=>String(72-Math.floor((Date.now()%(3600000))/3600000*40))},
+  {id:'seconds',icon:'⏱',name:'Secondes',unit:'',gen:()=>String(new Date().getSeconds()).padStart(2,'0')},
+];
+
+const POSITIONS=[
+  {id:'top-left',label:'↖ HG'},{id:'top-center',label:'↑ HC'},{id:'top-right',label:'↗ HD'},
+  {id:'mid-left',label:'← MG'},{id:'mid-center',label:'· MC'},{id:'mid-right',label:'→ MD'},
+  {id:'bot-left',label:'↙ BG'},{id:'bot-center',label:'↓ BC'},{id:'bot-right',label:'↘ BD'},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const S={
+  mode:'analog',
+  handStyle:0,
+  handColor:'#ffffff',
+  digitalStyle:0,
+  digitalColor:'#0a84ff',
+  comps:{date:true,day:false,bpm:true,steps:true,battery:true,seconds:false},
+  compPos:'bot-center',
+  watchModel:0,
+  currentSVG:null,
+  animFrame:null,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT UI
+// ═══════════════════════════════════════════════════════════════
+function initPresets(){
+  const row=document.getElementById('presetRow');
+  PRESETS.forEach((p,i)=>{
+    const b=document.createElement('button');
+    b.className='pchip';
+    b.style.setProperty('--pc',p.color);
+    b.style.setProperty('--pr',p.rgb);
+    b.innerHTML=`<span class="pdot" style="background:${p.color}"></span>${p.label}`;
+    b.onclick=()=>{
+      row.querySelectorAll('.pchip').forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+      document.getElementById('promptInput').value=p.prompt;
+    };
+    row.appendChild(b);
+  });
+}
+
+function initHands(){
+  const g=document.getElementById('handGrid');
+  HAND_STYLES.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='hcard'+(i===0?' on':'');
+    d.innerHTML=`
+      <svg viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" fill="#18181b" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+        <line x1="16" y1="5" x2="16" y2="16" stroke="${i===0?'#fff':'#6b6b7a'}" stroke-width="${2-i*0.2}" stroke-linecap="round"/>
+        <line x1="16" y1="8" x2="23" y2="16" stroke="${i===0?'rgba(255,255,255,0.6)':'#444'}" stroke-width="${1.5-i*0.15}" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="1.5" fill="${i===0?'#ff453a':'#444'}"/>
+      </svg>
+      <div class="hcard-lbl">${s.name}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('#handGrid .hcard').forEach(c=>c.classList.remove('on'));
+      d.classList.add('on');
+      S.handStyle=i;
+      renderHands();
+    };
+    g.appendChild(d);
+  });
+}
+
+function initHandColors(){
+  const row=document.getElementById('handColorRow');
+  HAND_COLORS.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='cswatch'+(c===S.handColor?' on':'');
+    sw.style.background=c;
+    sw.title=c;
+    sw.onclick=()=>{
+      row.querySelectorAll('.cswatch').forEach(s=>s.classList.remove('on'));
+      sw.classList.add('on');
+      S.handColor=c;
+      renderHands();
+    };
+    row.appendChild(sw);
+  });
+}
+
+function initDigitalStyles(){
+  const g=document.getElementById('dstyleGrid');
+  DIGITAL_STYLES.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='dcard'+(i===0?' on':'');
+    const previews=['12:34','12:34','12:34','12:34','12 34'];
+    const fonts=["'Orbitron'","'DM Sans'","'Orbitron'","'DM Sans'","'Orbitron'"];
+    const weights=['700','300','900','600','700'];
+    d.innerHTML=`<div class="dcard-preview" style="font-family:${fonts[i]};font-weight:${weights[i]};font-size:${i===3?'1rem':'.7rem'}">${previews[i]}</div>
+      <div class="dcard-lbl">${s.name}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('#dstyleGrid .dcard').forEach(c=>c.classList.remove('on'));
+      d.classList.add('on');
+      S.digitalStyle=i;
+    };
+    g.appendChild(d);
+  });
+}
+
+function initDigitalColors(){
+  const row=document.getElementById('digitalColorRow');
+  DIGITAL_COLORS.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='cswatch'+(c===S.digitalColor?' on':'');
+    sw.style.background=c;
+    sw.onclick=()=>{
+      row.querySelectorAll('.cswatch').forEach(s=>s.classList.remove('on'));
+      sw.classList.add('on');
+      S.digitalColor=c;
+    };
+    row.appendChild(sw);
+  });
+}
+
+function initComplications(){
+  const g=document.getElementById('compGrid');
+  COMPLICATIONS.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='comp-card'+(S.comps[c.id]?' on':'');
+    d.dataset.id=c.id;
+    d.innerHTML=`
+      <div class="comp-icon">${c.icon}</div>
+      <div class="comp-info">
+        <div class="comp-name">${c.name}</div>
+        <div class="comp-val" id="cv-${c.id}">—</div>
+      </div>
+      <div class="comp-toggle-dot"></div>`;
+    d.onclick=()=>{
+      S.comps[c.id]=!S.comps[c.id];
+      d.classList.toggle('on',S.comps[c.id]);
+    };
+    g.appendChild(d);
+  });
+
+  // Position grid
+  const pg=document.getElementById('posGrid');
+  POSITIONS.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='poscard'+(p.id===S.compPos?' on':'');
+    b.textContent=p.label;
+    b.onclick=()=>{
+      document.querySelectorAll('#posGrid .poscard').forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+      S.compPos=p.id;
+    };
+    pg.appendChild(b);
+  });
+}
+
+function initModels(){
+  const row=document.getElementById('modelRow');
+  WATCH_MODELS.forEach((m,i)=>{
+    const b=document.createElement('button');
+    b.className='mchip'+(i===0?' on':'');
+    b.innerHTML=`<strong>${m.label}</strong>${m.size}`;
+    b.onclick=()=>{
+      row.querySelectorAll('.mchip').forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+      S.watchModel=i;
+      const mod=WATCH_MODELS[i];
+      document.getElementById('resLbl').textContent=`${mod.w}×${mod.h}`;
+    };
+    row.appendChild(b);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION TOGGLE
+// ═══════════════════════════════════════════════════════════════
+function toggleSec(header){
+  const sec=header.parentElement;
+  const body=sec.querySelector('.sec-body');
+  if(sec.classList.contains('collapsed')){
+    sec.classList.remove('collapsed');
+    body.style.maxHeight=body.scrollHeight+'px';
+  } else {
+    sec.classList.add('collapsed');
+    body.style.maxHeight='0';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODE
+// ═══════════════════════════════════════════════════════════════
+function setMode(mode,btn){
+  S.mode=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('secHands').style.display=(mode==='digital')?'none':'block';
+  document.getElementById('secDigital').style.display=(mode==='analog')?'none':'block';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════
+function startAnim(){
+  if(S.animFrame) cancelAnimationFrame(S.animFrame);
+  function tick(){
+    const now=new Date();
+    const h=now.getHours()%12;
+    const m=now.getMinutes();
+    const s=now.getSeconds();
+    const ms=now.getMilliseconds();
+    const secDeg=(s+ms/1000)*6;
+    const minDeg=(m+s/60)*6;
+    const hrDeg=(h+m/60)*30;
+
+    // Rotate hands
+    if(S.mode!=='digital'){
+      const hh=document.getElementById('hourHand');
+      const mh=document.getElementById('minHand');
+      const sh=document.getElementById('secHand');
+      if(hh) hh.style.transform=`rotate(${hrDeg}deg)`;
+      if(mh) mh.style.transform=`rotate(${minDeg}deg)`;
+      if(sh) sh.style.transform=`rotate(${secDeg}deg)`;
+    }
+
+    // Digital display
+    if(S.mode!=='analog'){
+      const ds=document.getElementById('digitalDisplay');
+      if(ds){
+        const style=DIGITAL_STYLES[S.digitalStyle];
+        ds.innerHTML=style.render(now.getHours(),m,s,S.digitalColor);
+      }
+    }
+
+    // Complications live values
+    updateCompValues(now);
+    renderCompLayer();
+
+    S.animFrame=requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+function updateCompValues(now){
+  COMPLICATIONS.forEach(c=>{
+    const el=document.getElementById('cv-'+c.id);
+    if(el) el.textContent=c.gen()+(c.unit?' '+c.unit:'');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER HANDS
+// ═══════════════════════════════════════════════════════════════
+function renderHands(){
+  const svg=document.getElementById('handsSVG');
+  const cx=110,cy=110;
+
+  if(S.mode==='digital'){
+    svg.innerHTML='';
+    // Add digital display layer inside SVG
+    let ds=document.getElementById('digitalDisplay');
+    if(!ds){
+      ds=document.createElementNS('http://www.w3.org/2000/svg','g');
+      ds.id='digitalDisplay';
+      svg.appendChild(ds);
+    }
+    // Add glow defs
+    if(!svg.querySelector('defs')) addDefs(svg);
+    return;
+  }
+
+  svg.innerHTML='';
+  addDefs(svg);
+
+  const style=HAND_STYLES[S.handStyle];
+  svg.innerHTML+=style.draw(cx,cy,S.handColor);
+
+  // Center cap
+  const cap=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  cap.setAttribute('cx',cx); cap.setAttribute('cy',cy); cap.setAttribute('r','4.5');
+  cap.setAttribute('fill',S.handColor); cap.setAttribute('filter','url(#hglow)');
+  svg.appendChild(cap);
+
+  // Digital overlay in hybrid
+  if(S.mode==='hybrid'){
+    const dg=document.createElementNS('http://www.w3.org/2000/svg','g');
+    dg.id='digitalDisplay';
+    svg.appendChild(dg);
+  }
+}
+
+function addDefs(svg){
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  defs.innerHTML=`
+    <filter id="hglow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="dglow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="neon-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b1"/>
+      <feGaussianBlur stdDeviation="8" result="b2"/>
+      <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="cglow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+  svg.appendChild(defs);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPLICATIONS LAYER (HTML overlay)
+// ═══════════════════════════════════════════════════════════════
+const POS_CSS={
+  'top-left':    {top:'8%',left:'6%',transform:'none'},
+  'top-center':  {top:'8%',left:'50%',transform:'translateX(-50%)'},
+  'top-right':   {top:'8%',right:'6%',transform:'none'},
+  'mid-left':    {top:'50%',left:'6%',transform:'translateY(-50%)'},
+  'mid-center':  {top:'50%',left:'50%',transform:'translate(-50%,-50%)'},
+  'mid-right':   {top:'50%',right:'6%',transform:'translateY(-50%)'},
+  'bot-left':    {bottom:'12%',left:'6%',transform:'none'},
+  'bot-center':  {bottom:'12%',left:'50%',transform:'translateX(-50%)'},
+  'bot-right':   {bottom:'12%',right:'6%',transform:'none'},
+};
+
+let lastCompRender=0;
+function renderCompLayer(){
+  const now=Date.now();
+  if(now-lastCompRender<200) return; // throttle to 5fps for comps
+  lastCompRender=now;
+
+  const layer=document.getElementById('compLayer');
+  const active=COMPLICATIONS.filter(c=>S.comps[c.id]);
+  if(!active.length){ layer.innerHTML=''; return; }
+
+  const pos=POS_CSS[S.compPos]||POS_CSS['bot-center'];
+  const styleStr=Object.entries(pos).map(([k,v])=>`${k}:${v}`).join(';');
+
+  layer.innerHTML=`
+    <div style="position:absolute;${styleStr};
+      display:flex;gap:6px;flex-wrap:wrap;max-width:85%;
+      justify-content:center;align-items:center">
+      ${active.map(c=>{
+        const val=c.gen();
+        const isHigh=c.id==='bpm'&&parseInt(val)>90;
+        const isMed=c.id==='battery'&&parseInt(val)<30;
+        const col=isHigh?'#ff453a':isMed?'#ff9f0a':'rgba(255,255,255,0.92)';
+        return `<div style="
+          background:rgba(0,0,0,0.62);
+          border:1px solid rgba(255,255,255,0.14);
+          border-radius:8px;padding:4px 8px;
+          display:flex;align-items:center;gap:4px;
+          backdrop-filter:blur(4px);white-space:nowrap;
+          ${c.id==='bpm'&&isHigh?'border-color:rgba(255,69,58,0.5);':''}
+          ${c.id==='battery'&&isMed?'border-color:rgba(255,159,10,0.5);':''}">
+          <span style="font-size:.7rem">${c.icon}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;font-weight:700;color:${col}">${val}${c.unit?' '+c.unit:''}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NETWORK — XHR CALLBACK (pas d'async/await → plus fiable iOS Safari)
+// withCredentials=false obligatoire + timeout 60s
+// ═══════════════════════════════════════════════════════════════
+
+// Supprime tous les caractères non-ASCII + espaces invisibles (bug copier-coller iOS)
+function sanitizeKey(k){
+  return (k||'')
+    .replace(/[\u0000-\u001F\u007F-\uFFFF]/g,'') // hors ASCII imprimable
+    .replace(/\s/g,'')                             // tout espace y compris NBSP
+    .trim();
+}
+
+// XHR callback — évite fetch() (CORS null-origin) ET async/await (Promise issues iOS)
+function callMistral(apiKey, payload, onSuccess, onError){
+  var xhr = new XMLHttpRequest();
+  xhr.withCredentials = false;
+  xhr.open('POST','https://api.mistral.ai/v1/chat/completions', true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.setRequestHeader('Authorization','Bearer '+apiKey);
+  xhr.timeout = 60000;
+
+  xhr.onreadystatechange = function(){
+    if(xhr.readyState !== 4) return;
+    if(xhr.status >= 200 && xhr.status < 300){
+      try{
+        var data = JSON.parse(xhr.responseText);
+        onSuccess(data);
+      } catch(e){
+        onError('Réponse JSON invalide : '+xhr.responseText.slice(0,80));
+      }
+    } else if(xhr.status === 0){
+      // status 0 = réseau bloqué ou CORS préflight échoué
+      onError('Réseau bloqué (status 0). Sur iOS : ouvrez le fichier via un serveur web, pas depuis Files. Ou vérifiez votre connexion.');
+    } else {
+      var msg = 'Erreur HTTP '+xhr.status;
+      try{
+        var e = JSON.parse(xhr.responseText);
+        msg = e.message || e.error || msg;
+      } catch(_){}
+      onError(msg+' (status '+xhr.status+')');
+    }
+  };
+
+  xhr.ontimeout = function(){
+    onError('Timeout 60s — réseau lent ou clé invalide.');
+  };
+
+  xhr.onerror = function(){
+    onError('Erreur XHR. Sur iOS Safari depuis file:// → ouvrez via un mini-serveur local ou Cloudflare Pages.');
+  };
+
+  try{
+    xhr.send(payload);
+  } catch(sendErr){
+    onError('Erreur envoi : '+sendErr.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GENERATE — version callback pure, sans async/await
+// ═══════════════════════════════════════════════════════════════
+function generate(){
+  var rawKey  = document.getElementById('apiKey').value;
+  var apiKey  = sanitizeKey(rawKey);
+  var prompt  = document.getElementById('promptInput').value.replace(/^\s+|\s+$/g,'');
+  var btn     = document.getElementById('genBtn');
+  hideErr();
+
+  // Validation clé
+  if(!apiKey){
+    showErr('Clé API Mistral manquante. Collez-la dans le champ ci-dessous.');
+    return;
+  }
+  if(apiKey.length < 20){
+    showErr('Clé trop courte ('+apiKey.length+' car.). Vérifiez le copier-coller — clé obtenue sur console.mistral.ai');
+    return;
+  }
+  // Auto-correction silencieuse si caractères parasites présents
+  if(apiKey !== rawKey.replace(/\s/g,'').trim()){
+    document.getElementById('apiKey').value = apiKey;
+  }
+  if(!prompt){
+    showErr('Décris le fond du cadran.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Génération en cours…';
+  document.getElementById('ph').style.display = 'none';
+  document.getElementById('loadOverlay').classList.add('on');
+
+  var prev = document.getElementById('dialLayer').querySelector('.dial-reveal');
+  if(prev) prev.remove();
+  S.currentSVG = null;
+
+  var sys = 'Tu es un expert SVG en design de cadrans de montre.\n'
+    +'RÈGLES ABSOLUES :\n'
+    +'- Réponse = UNIQUEMENT le SVG, commence par <svg, finit par </svg>.\n'
+    +'- Aucun texte avant/après, aucun markdown.\n'
+    +'- Obligatoire : viewBox="0 0 220 220", xmlns="http://www.w3.org/2000/svg".\n'
+    +'- Tu dessines UNIQUEMENT le fond : cercle de cadran, index, textures, décorations.\n'
+    +'- AUCUNE aiguille. Elles sont gérées séparément.\n'
+    +'- Utilise librement : linearGradient, radialGradient, filter, clipPath, pattern, text, circle, path.\n'
+    +'- Le résultat doit être visuellement exceptionnel.';
+
+  var payload = JSON.stringify({
+    model: 'mistral-medium-latest',
+    max_tokens: 4096,
+    temperature: 0.85,
+    messages: [
+      {role:'system', content: sys},
+      {role:'user',   content: 'Génère le fond SVG pour : '+prompt}
+    ]
+  });
+
+  function onDone(){
+    document.getElementById('loadOverlay').classList.remove('on');
+    btn.disabled = false;
+    btn.textContent = '✦ Générer le cadran';
+  }
+
+  callMistral(apiKey, payload,
+    function(data){ // SUCCESS
+      onDone();
+      var raw = data.choices[0].message.content;
+      var m   = raw.match(/<svg[\s\S]*?<\/svg>/i);
+      if(!m){
+        showErr("Mistral n'a pas retourné de SVG valide. Réessaie.");
+        document.getElementById('ph').style.display='flex';
+        return;
+      }
+      var svg = m[0];
+      if(svg.indexOf('viewBox')===-1) svg = svg.replace('<svg','<svg viewBox="0 0 220 220"');
+      S.currentSVG = svg;
+
+      var wrap = document.createElement('div');
+      wrap.className = 'dial-reveal';
+      wrap.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+      wrap.innerHTML = svg;
+      var svgEl = wrap.querySelector('svg');
+      if(svgEl){
+        svgEl.removeAttribute('width');
+        svgEl.removeAttribute('height');
+        svgEl.style.cssText = 'width:100%;height:100%;display:block;';
+      }
+      document.getElementById('dialLayer').appendChild(wrap);
+      renderHands();
+      startAnim();
+      document.getElementById('expSec').classList.add('on');
+    },
+    function(errMsg){ // ERROR
+      onDone();
+      showErr(errMsg);
+      document.getElementById('ph').style.display='flex';
+    }
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT WATCH PNG
+// ═══════════════════════════════════════════════════════════════
+function exportWatch(){
+  if(!S.currentSVG){alert('Génère d\'abord un cadran.');return;}
+  const mod=WATCH_MODELS[S.watchModel];
+  const W=mod.w,H=mod.h;
+
+  // Build full composite SVG
+  const fullSVG=buildCompositeSVG(W,H);
+
+  const blob=new Blob([fullSVG],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const img=new Image();
+  img.onload=()=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    ctx.drawImage(img,0,0,W,H);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(png=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(png);
+      a.download=`niko-watchface-${W}x${H}.png`;
+      a.click();URL.revokeObjectURL(a.href);
+    },'image/png');
+  };
+  img.onerror=()=>{alert('Erreur PNG. Essaie SVG.');URL.revokeObjectURL(url);};
+  img.src=url;
+}
+
+function buildCompositeSVG(W,H){
+  const cx=W/2,cy=H/2;
+  const now=new Date();
+  const h=now.getHours()%12,m=now.getMinutes(),s=now.getSeconds();
+  const secDeg=s*6,minDeg=(m+s/60)*6,hrDeg=(h+m/60)*30;
+
+  let dialContent=S.currentSVG.replace(/<svg[^>]*>/,'').replace(/<\/svg>/,'');
+
+  let handsContent='';
+  if(S.mode!=='digital'){
+    const style=HAND_STYLES[S.handStyle];
+    handsContent=style.draw(cx,cy,S.handColor)
+      .replace(/id="hourHand"/,`id="hourHand" style="transform-origin:${cx}px ${cy}px;transform:rotate(${hrDeg}deg)"`)
+      .replace(/id="minHand"/,`id="minHand" style="transform-origin:${cx}px ${cy}px;transform:rotate(${minDeg}deg)"`)
+      .replace(/id="secHand"/,`id="secHand" style="transform-origin:${cx}px ${cy}px;transform:rotate(${secDeg}deg)"`);
+  }
+
+  let digitalContent='';
+  if(S.mode!=='analog'){
+    const ds=DIGITAL_STYLES[S.digitalStyle];
+    digitalContent=ds.render(now.getHours(),m,s,S.digitalColor);
+  }
+
+  const active=COMPLICATIONS.filter(c=>S.comps[c.id]);
+  let compContent='';
+  if(active.length){
+    const pos=S.compPos;
+    let bx=cx,by=H*0.85;
+    if(pos.includes('top')) by=H*0.12;
+    else if(pos.includes('bot')) by=H*0.88;
+    else by=H*0.5;
+    if(pos.includes('left')) bx=W*0.18;
+    else if(pos.includes('right')) bx=W*0.82;
+    else bx=W*0.5;
+
+    const itemW=70,gap=8,total=active.length;
+    const startX=bx-(total*(itemW+gap)-gap)/2;
+
+    active.forEach((c,i)=>{
+      const val=c.gen()+(c.unit?' '+c.unit:'');
+      const x=startX+i*(itemW+gap);
+      compContent+=`
+        <rect x="${x}" y="${by-12}" width="${itemW}" height="22" rx="6"
+          fill="rgba(0,0,0,0.65)" stroke="rgba(255,255,255,0.15)" stroke-width="0.8"/>
+        <text x="${x+8}" y="${by+3}" dominant-baseline="middle"
+          font-family="'Space Mono',monospace" font-size="${W*0.025}" fill="rgba(255,255,255,0.9)">${c.icon} ${val}</text>`;
+    });
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+  <defs>
+    <filter id="hglow"><feGaussianBlur stdDeviation="${W*0.006}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="dglow"><feGaussianBlur stdDeviation="${W*0.008}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="neon-glow"><feGaussianBlur stdDeviation="${W*0.012}" result="b1"/><feGaussianBlur stdDeviation="${W*0.02}" result="b2"/><feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="${W}" height="${H}" fill="#000"/>
+  <g transform="scale(${W/220},${H/220})">${dialContent}</g>
+  <g transform="scale(${W/220},${H/220})">${handsContent}</g>
+  <svg viewBox="0 0 ${W} ${H}" x="0" y="0" width="${W}" height="${H}">${digitalContent}</svg>
+  ${compContent}
+</svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT SVG
+// ═══════════════════════════════════════════════════════════════
+function exportSVG(){
+  if(!S.currentSVG){alert('Génère d\'abord un cadran.');return;}
+  const blob=new Blob([S.currentSVG],{type:'image/svg+xml;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='niko-watchface.svg';
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT ANIMATED HTML
+// ═══════════════════════════════════════════════════════════════
+function exportHTML(){
+  if(!S.currentSVG){alert('Génère d\'abord un cadran.');return;}
+
+  const mod=WATCH_MODELS[S.watchModel];
+  const W=mod.w,H=mod.h;
+  const cx=W/2,cy=H/2;
+
+  const handStyleJS=HAND_STYLES[S.handStyle].draw.toString();
+  const digitalStyleJS=DIGITAL_STYLES[S.digitalStyle].render.toString();
+  const compsActive=COMPLICATIONS.filter(c=>S.comps[c.id]);
+  const compsJS=compsActive.map(c=>({id:c.id,icon:c.icon,unit:c.unit,gen:c.gen.toString()}));
+
+  const dialInner=S.currentSVG.replace(/<svg[^>]*>/,'').replace(/<\/svg>/,'');
+
+  const html=`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Niko Watch Face</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;display:flex;align-items:center;justify-content:center;
+  min-height:100vh;overflow:hidden;touch-action:none}
+#wf{position:relative;width:${W}px;height:${H}px;border-radius:${Math.round(W*0.23)}px;overflow:hidden;background:#000}
+#dial,#hands,#comps{position:absolute;inset:0;width:100%;height:100%}
+#dial svg{width:100%;height:100%;display:block}
+#hands{pointer-events:none;z-index:2}
+#hsvg{width:100%;height:100%}
+#comps{pointer-events:none;z-index:3}
+</style></head>
+<body>
+<div id="wf">
+  <div id="dial">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" style="width:100%;height:100%">
+      <defs>
+        <filter id="hglow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="dglow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="neon-glow"><feGaussianBlur stdDeviation="4" result="b1"/><feGaussianBlur stdDeviation="8" result="b2"/><feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      ${dialInner}
+    </svg>
+  </div>
+  <div id="hands">
+    <svg id="hsvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+      <defs>
+        <filter id="hglow2"><feGaussianBlur stdDeviation="${W*0.006}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="dglow2"><feGaussianBlur stdDeviation="${W*0.008}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="neon-glow2"><feGaussianBlur stdDeviation="${W*0.012}" result="b1"/><feGaussianBlur stdDeviation="${W*0.02}" result="b2"/><feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+    </svg>
+  </div>
+  <div id="comps"></div>
+</div>
+<script>
+const MODE="${S.mode}";
+const HAND_COLOR="${S.handColor}";
+const DIG_COLOR="${S.digitalColor}";
+const W=${W},H=${H},cx=${cx},cy=${cy};
+const COMPS=${JSON.stringify(compsActive.map(c=>({id:c.id,icon:c.icon,unit:c.unit})))};
+const COMP_POS="${S.compPos}";
+
+function drawHands(cx,cy,col){
+  return \`${HAND_STYLES[S.handStyle].draw(cx,cy,'COL').replace(/COL/g,"'+col+'")}\`;
+}
+function drawDigital(h,m,s,col){
+  return \`${DIGITAL_STYLES[S.digitalStyle].render('H','M','S','COL')
+    .replace(/H/g,"'+h+'").replace(/M/g,"'+m+'").replace(/S/g,"'+s+'").replace(/COL/g,"'+col+'")}\`;
+}
+
+const svg=document.getElementById('hsvg');
+
+// Init hands
+if(MODE!=='digital'){
+  const tmp=document.createElement('div');
+  tmp.innerHTML=drawHands(cx,cy,HAND_COLOR);
+  Array.from(tmp.children).forEach(el=>svg.appendChild(el));
+  const cap=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  cap.setAttribute('cx',cx);cap.setAttribute('cy',cy);cap.setAttribute('r',String(W*0.012));
+  cap.setAttribute('fill',HAND_COLOR);cap.setAttribute('filter','url(#hglow2)');
+  svg.appendChild(cap);
+}
+
+// Digital group
+let dg=null;
+if(MODE!=='analog'){
+  dg=document.createElementNS('http://www.w3.org/2000/svg','g');
+  dg.id='dg';svg.appendChild(dg);
+}
+
+const POS={
+  'top-left':'top:8%;left:6%','top-center':'top:8%;left:50%;transform:translateX(-50%)',
+  'top-right':'top:8%;right:6%','mid-left':'top:50%;left:6%;transform:translateY(-50%)',
+  'mid-center':'top:50%;left:50%;transform:translate(-50%,-50%)',
+  'mid-right':'top:50%;right:6%;transform:translateY(-50%)',
+  'bot-left':'bottom:12%;left:6%','bot-center':'bottom:12%;left:50%;transform:translateX(-50%)',
+  'bot-right':'bottom:12%;right:6%'
+};
+
+const COMP_GENS={
+  date:()=>{const d=new Date();return d.getDate()+'/'+(d.getMonth()+1).toString().padStart(2,'0')},
+  day:()=>['DIM','LUN','MAR','MER','JEU','VEN','SAM'][new Date().getDay()],
+  bpm:()=>String(62+Math.floor(Math.sin(Date.now()/3000)*8+Math.random()*4)),
+  steps:()=>(4200+Math.floor(Date.now()/60000)%3000).toLocaleString('fr'),
+  battery:()=>String(72-Math.floor((Date.now()%3600000)/3600000*40)),
+  seconds:()=>new Date().getSeconds().toString().padStart(2,'0'),
+};
+
+let lastComp=0;
+function tick(){
+  const now=new Date();
+  const h=now.getHours()%12,m=now.getMinutes(),s=now.getSeconds(),ms=now.getMilliseconds();
+  const sd=(s+ms/1000)*6,md=(m+s/60)*6,hd=(h+m/60)*30;
+
+  if(MODE!=='digital'){
+    const hh=document.getElementById('hourHand');
+    const mh=document.getElementById('minHand');
+    const sh=document.getElementById('secHand');
+    if(hh)hh.style.transform='rotate('+hd+'deg)';
+    if(mh)mh.style.transform='rotate('+md+'deg)';
+    if(sh)sh.style.transform='rotate('+sd+'deg)';
+  }
+  if(MODE!=='analog'&&dg){
+    const pad=n=>String(n).padStart(2,'0');
+    dg.innerHTML=drawDigital(pad(now.getHours()),pad(m),pad(s),DIG_COLOR);
+  }
+
+  const t=Date.now();
+  if(t-lastComp>200){
+    lastComp=t;
+    const layer=document.getElementById('comps');
+    if(COMPS.length){
+      layer.innerHTML='<div style="position:absolute;'+POS[COMP_POS]+';display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:88%">'+
+        COMPS.map(c=>{
+          const val=COMP_GENS[c.id]()+(c.unit?' '+c.unit:'');
+          return '<div style="background:rgba(0,0,0,0.62);border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:4px 8px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);white-space:nowrap"><span style="font-size:${W*0.028}px">'+c.icon+'</span><span style="font-family:Space Mono,monospace;font-size:${W*0.025}px;color:rgba(255,255,255,0.9);font-weight:700">'+val+'</span></div>';
+        }).join('')+'</div>';
+    }
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+<\/script>
+</body></html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='niko-watchface-animated.html';
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
+function showErr(msg){const e=document.getElementById('errBar');e.textContent='⚠ '+msg;e.classList.add('on');}
+function hideErr(){document.getElementById('errBar').classList.remove('on');}
+function toggleKey(){
+  var inp = document.getElementById('apiKey');
+  var btn = document.getElementById('eyeBtn');
+  var hidden = inp.style.webkitTextSecurity === 'disc' || inp.style.webkitTextSecurity === '';
+  inp.style.webkitTextSecurity = hidden ? 'none' : 'disc';
+  btn.textContent = hidden ? '🙈' : '👁';
+}
+
+function testKey(){
+  var rawKey = document.getElementById('apiKey').value;
+  var apiKey = sanitizeKey(rawKey);
+  var status = document.getElementById('keyStatus');
+  var btn    = document.getElementById('testBtn');
+
+  status.style.display = 'block';
+
+  if(!apiKey || apiKey.length < 20){
+    status.style.background = 'rgba(255,69,58,.12)';
+    status.style.color = '#ff6b63';
+    status.style.border = '1px solid rgba(255,69,58,.3)';
+    status.textContent = '✗ Clé invalide ou manquante ('+apiKey.length+' car.)';
+    return;
+  }
+
+  status.style.background = 'rgba(255,255,255,.04)';
+  status.style.color = 'var(--m)';
+  status.style.border = '1px solid var(--b)';
+  status.textContent = '⏳ Test en cours… (clé: '+apiKey.slice(0,6)+'…'+apiKey.slice(-4)+', '+apiKey.length+' car.)';
+  btn.disabled = true;
+
+  // Test avec un prompt minimal
+  var payload = JSON.stringify({
+    model: 'mistral-small-latest',
+    max_tokens: 5,
+    messages: [{role:'user', content:'1+1='}]
+  });
+
+  callMistral(apiKey, payload,
+    function(data){
+      btn.disabled = false;
+      status.style.background = 'rgba(48,209,88,.1)';
+      status.style.color = '#30d158';
+      status.style.border = '1px solid rgba(48,209,88,.3)';
+      status.textContent = '✓ Clé valide — connexion Mistral OK';
+    },
+    function(err){
+      btn.disabled = false;
+      status.style.background = 'rgba(255,69,58,.1)';
+      status.style.color = '#ff6b63';
+      status.style.border = '1px solid rgba(255,69,58,.3)';
+      status.textContent = '✗ '+err;
+    }
+  );
+}
+function showGuide(){document.getElementById('modal').classList.add('on');}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+function handleBg(e){if(e.target===e.currentTarget)closeModal();}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+initPresets();
+initHands();
+initHandColors();
+initDigitalStyles();
+initDigitalColors();
+initComplications();
+initModels();
+
+// Start clock ticking even without a generated dial
+renderHands();
+startAnim();
+</script>
+</body>
+</html>
